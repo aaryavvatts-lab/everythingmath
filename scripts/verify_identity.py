@@ -6,8 +6,11 @@ A passing check is evidence, never proof: it can refute a claim or raise confide
   verify_identity.py eq    "sin(x)**2+cos(x)**2" "1" --vars x:-5:5
   verify_identity.py ineq  "x**2+1 >= 2*x" --vars x:-10:10
   verify_identity.py deriv "x**3*sin(x)" "3*x**2*sin(x)+x**3*cos(x)" --var x --range 0.1:3
+  verify_identity.py deriv "x/(x**2+y**2)" "(y**2-x**2)/(x**2+y**2)**2" --var x --range 0.5:3 --others y:0.5:3
+      (partial derivative of a function of two variables; use it twice to check Q_x = P_y for a curl)
   verify_identity.py integral "x*exp(-x)" x 0 inf "1"
-  verify_identity.py sum   "k**2" k 1 n "n*(n+1)*(2*n+1)/6" --nrange 1:60
+  verify_identity.py sum   "k**2" k 1 n "n*(n+1)*(2*n+1)/6" --nrange 1:60      (exact rational arithmetic)
+  verify_identity.py sum   "sin(k)" k 1 n "(cos(1/2)-cos(n+1/2))/(2*sin(1/2))" --float   (trig, exp, log terms)
   verify_identity.py limit "sin(x)/x" x 0 1
 
 Expressions use Python syntax: ** or ^ for powers, explicit * for products, functions such as
@@ -23,7 +26,19 @@ import sys
 from fractions import Fraction
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _safe import UNDEFINED, close, parse, parse_vars, sample_points  # noqa: E402
+from _safe import UNDEFINED, close, parse, parse_vars, sample_points, used_names  # noqa: E402
+
+
+def _warn_unused(ranges, *exprs):
+    seen = set()
+    for e in exprs:
+        seen |= used_names(e)
+    unused = [v for v in ranges if v not in seen]
+    if unused and len(unused) == len(ranges):
+        print("WARNING: none of the variables (%s) appear in the expressions, so this tests a constant. "
+              "For exact integer identities use the sum command or counterexample.py." % ", ".join(unused))
+    elif unused:
+        print("WARNING: variable(s) %s do not appear in the expressions" % ", ".join(unused))
 
 
 def _bad(x):
@@ -44,6 +59,7 @@ def cmd_eq(a):
     fixed = _fixed(a.fix)
     names = set(ranges) | set(fixed)
     f, g = parse(a.lhs, names), parse(a.rhs, names)
+    _warn_unused(ranges, a.lhs, a.rhs)
     tested = skipped = 0
     fails, worst = [], 0.0
     for p in sample_points(ranges, a.n, a.seed):
@@ -92,6 +108,7 @@ def cmd_ineq(a):
     fixed = _fixed(a.fix)
     names = set(ranges) | set(fixed)
     f, g = parse(left, names), parse(right, names)
+    _warn_unused(ranges, left, right)
     tested = skipped = 0
     viol = []
     tight = (math.inf, None)
@@ -141,12 +158,16 @@ def _deriv(f, env, var, x):
 def cmd_deriv(a):
     lo, hi = [float(t) for t in a.range.split(":")]
     fixed = _fixed(a.fix)
-    names = {a.var} | set(fixed)
+    others = parse_vars(a.others) if a.others else {}
+    names = {a.var} | set(fixed) | set(others)
     f, claim = parse(a.expr, names), parse(a.derivative, names)
     tested = skipped = 0
     fails, worst = [], 0.0
-    for p in sample_points({a.var: (lo, hi)}, a.n, a.seed):
+    ranges = {a.var: (lo, hi)}
+    ranges.update(others)
+    for p in sample_points(ranges, a.n, a.seed):
         env = dict(fixed)
+        env.update({k: v for k, v in p.items() if k != a.var})
         x = p[a.var]
         try:
             num = _deriv(f, env, a.var, x)
@@ -161,7 +182,7 @@ def cmd_deriv(a):
         tested += 1
         worst = max(worst, abs(num - val) / max(1.0, abs(num), abs(val)))
         if not close(num, val, a.tol):
-            fails.append(({a.var: x}, num, val))
+            fails.append((dict(p), num, val))
     print("compared numerical d/d%s with the claimed derivative at %d points" % (a.var, tested))
     return _verdict_eq(argparse.Namespace(n=a.n, tol=a.tol), tested, skipped, fails, worst)
 
@@ -248,25 +269,35 @@ def cmd_integral(a):
 
 def cmd_sum(a):
     lo_s, hi_s = a.nrange.split(":")
+    mode = "float" if a.float else "exact"
+    num = float if a.float else Fraction
     names = {a.idx, a.param}
-    term = parse(a.expr, names, "exact")
-    lo_f, hi_f = parse(a.lower, {a.param}, "exact"), parse(a.upper, {a.param}, "exact")
-    closed = parse(a.closed, {a.param}, "exact")
+    try:
+        term = parse(a.expr, names, mode)
+        lo_f, hi_f = parse(a.lower, {a.param}, mode), parse(a.upper, {a.param}, mode)
+        closed = parse(a.closed, {a.param}, mode)
+    except ValueError as exc:
+        if not a.float:
+            raise ValueError("%s. Exact mode supports rational arithmetic only (+ - * / ** and abs, min, max, "
+                             "floor, ceil, binom, factorial, gcd). For trig, exp, log or sqrt terms add --float." % exc)
+        raise
     checked = 0
     for n in range(int(lo_s), int(hi_s) + 1):
-        env = {a.param: Fraction(n)}
+        env = {a.param: num(n)}
         lo, hi = int(lo_f(env)), int(hi_f(env))
-        total = Fraction(0)
+        total = num(0)
         for k in range(lo, hi + 1):
-            env[a.idx] = Fraction(k)
+            env[a.idx] = num(k)
             total += term(env)
-        want = closed({a.param: Fraction(n)})
+        want = closed({a.param: num(n)})
         checked += 1
-        if total != want:
+        if (not close(total, want, a.tol)) if a.float else (total != want):
             print("MISMATCH at %s=%d: sum = %s, closed form = %s" % (a.param, n, total, want))
             return 1
-    print("EXACT AGREEMENT for %s = %s..%s (%d cases, rational arithmetic). Finite evidence; "
-          "prove it by induction or telescoping." % (a.param, lo_s, hi_s, checked))
+    print(("AGREEMENT to %g for %s = %s..%s (%d cases, floating point)" % (a.tol, a.param, lo_s, hi_s, checked)
+           if a.float else
+           "EXACT AGREEMENT for %s = %s..%s (%d cases, rational arithmetic)" % (a.param, lo_s, hi_s, checked))
+          + ". Finite evidence; prove it by induction or telescoping.")
     return 0
 
 
@@ -315,7 +346,9 @@ def _protect_negatives(argv):
     """argparse treats -inf or -x**2 as options; wrap such expression arguments in parentheses."""
     out = []
     for t in argv:
-        if t.startswith("-") and not t.startswith("--") and len(t) > 1 and not re.fullmatch(r"-\d+(\.\d*)?|-\.\d+", t):
+        if t == "-h" or t.startswith("--"):
+            out.append(t)
+        elif t.startswith("-") and len(t) > 1 and not re.fullmatch(r"-\d+(\.\d*)?|-\.\d+", t):
             out.append("(" + t + ")")
         else:
             out.append(t)
@@ -336,12 +369,16 @@ def main():
     p = sub.add_parser("eq"); p.add_argument("lhs"); p.add_argument("rhs"); p.add_argument("--vars", required=True); common(p)
     p = sub.add_parser("ineq"); p.add_argument("statement"); p.add_argument("--vars", required=True); common(p)
     p = sub.add_parser("deriv"); p.add_argument("expr"); p.add_argument("derivative")
-    p.add_argument("--var", default="x"); p.add_argument("--range", default="0.1:3"); common(p, 1e-6)
+    p.add_argument("--var", default="x"); p.add_argument("--range", default="0.1:3")
+    p.add_argument("--others", default="", help="ranges for the other variables, e.g. y:0.5:3 (partial derivatives, curl checks)")
+    common(p, 1e-6)
     p = sub.add_parser("integral"); p.add_argument("expr"); p.add_argument("var"); p.add_argument("lower")
     p.add_argument("upper"); p.add_argument("claimed", nargs="?"); p.add_argument("--tol", type=float, default=1e-8)
     p.add_argument("--fix", default="")
     p = sub.add_parser("sum"); p.add_argument("expr"); p.add_argument("idx"); p.add_argument("lower")
     p.add_argument("upper"); p.add_argument("closed"); p.add_argument("--param", default="n"); p.add_argument("--nrange", default="1:40")
+    p.add_argument("--float", action="store_true", help="floating point, allows sin, exp, log, sqrt in the terms")
+    p.add_argument("--tol", type=float, default=1e-9)
     p = sub.add_parser("limit"); p.add_argument("expr"); p.add_argument("var"); p.add_argument("point")
     p.add_argument("claimed", nargs="?"); p.add_argument("--side", choices=["both", "left", "right"], default="both")
     p.add_argument("--tol", type=float, default=1e-3)

@@ -17,7 +17,7 @@ Load skills with the Skill tool, one at a time, just before using them, in plan 
 
 ## Ground rules (they hold in every phase)
 
-- **Never bluff.** Use four confidence labels and mean them: `SOLVED` (complete argument, every check passed), `SOLVED-WITH-CAVEAT` (complete except a named step that is numerically supported but not proved), `PARTIAL` (proved parts and stated gaps), `NO-CONFIDENT-SOLUTION`. A real attempt that ends in `PARTIAL` with honest gaps beats a polished page that hides one. Never claim to have solved an open problem; say what is known and what is new.
+- **Never bluff.** Use five confidence labels and mean them: `SOLVED` (complete argument, every check passed), `REFUTED` (the statement as given is false and the counterexample is verified by script; rewrite the ledger's Asked lines to "establish whether it holds", and also prove the nearest true statement), `SOLVED-WITH-CAVEAT` (complete except a named step that is numerically supported but not proved), `PARTIAL` (proved parts and stated gaps), `NO-CONFIDENT-SOLUTION`. A real attempt that ends in `PARTIAL` with honest gaps beats a polished page that hides one. Never claim to have solved an open problem; say what is known and what is new.
 - **Compute, don't recall.** Constants, closed forms, special values and "well-known" results get checked by a script or re-derived. A named theorem is cited with its exact hypotheses, and you verify those hypotheses hold in this problem. Never cite a theorem, paper or number from memory as if it were verified.
 - **No unjustified steps.** The words "clearly", "obviously", "similarly", "by symmetry", "WLOG" and "it is well known" each need a reason on the page. `proof_lint.py` flags them.
 - **Two routes to every answer.** A final answer must be confirmed by a second, independent method (a different derivation, a numerical evaluation, a special-case check, or plugging back into the original). One route is a guess that happened to look consistent.
@@ -25,7 +25,8 @@ Load skills with the Skill tool, one at a time, just before using them, in plan 
 - **State conventions.** Domains, definitions, ranges, branches of functions, what N and "positive" include, and what the answer format is. Ambiguity that changes the answer is solved both ways or raised.
 - **Academic integrity is the user's call.** If the material looks like a graded assignment, an exam, a competition in progress, or an application problem set (for example MIT PRIMES, a course homework, a contest), check what help is allowed, because many of these require the student's own solutions. Unless the user confirms outside help is allowed, switch to **teach mode**: restate the problem, give hints and the key idea, check the student's own attempt, and explain concepts, but do not hand over a complete submission-ready solution. Say this in one line and let the user decide. For their own research, self-study, worked examples and practice, solve fully.
 - **Respect saved preferences.** CLAUDE.md and memory may hold notation, punctuation (many users ban em dashes), format, or tone rules. They override this skill's defaults.
-- **Leave the user's files alone.** Work in a new folder (`math/<problem-name>/`), write new versions beside old ones, never overwrite or delete a file that existed before the run.
+- **Leave the user's files alone.** Work in the output folder the user or caller named, otherwise a new folder (`math/<problem-name>/`). Write new versions beside old ones; never overwrite or delete a file that existed before the run.
+- **Beware cores that halt for missing project files.** `math-rigor` stops if there is no `math-context.md`. If you pick it, first write a short `math-context.md` (conventions, notation, definitions) in the output folder; otherwise choose another core. A companion skill's halt never ends the run.
 - **Publishing and submitting are the user's call.** Never upload, email or post anything. Offer it.
 
 ## Phase 0: Ready check and job size
@@ -53,9 +54,9 @@ It reports which catalog skills and which programs exist (Python, SymPy, a LaTeX
 | `VISUAL` | math slides, figures, animations, posters |
 
 **Size the job.**
-- **Light:** one routine calculation, a short derivation, one CHECK of a short argument, an EXPLAIN of a single idea. Use at most about four skills. Rounds 1 and 2 still run in short form (answer plugged back, second route), and Round 3 may be a careful blind re-solve by yourself using a different method. No checkpoint.
+- **Light:** one routine calculation, a short derivation, one CHECK of a short argument, an EXPLAIN of a single idea, a refutation by a verified counterexample, or any job whose complete solution fits in about 15 lines, even when it overturns a belief the user holds. Use at most about four skills. Rounds 1 and 2 still run in short form (answer plugged back, second route), and Round 3 may be a careful blind re-solve by yourself using a different method. No checkpoint.
 - **Full:** any proof, any olympiad or competition problem, anything multi-step or multi-part, any PACKET, anything graded or submitted, any WRITE of a full document. Every phase runs, Round 3 uses fresh independent agents, and Phase 3 stops once only if the interpretation is ambiguous.
-When both seem to fit, stakes decide: if the answer will be submitted or relied on, it is Full.
+When both seem to fit, stakes decide: if the work will be submitted, graded or built upon, it is Full; a short correction of a belief stays Light. A Light job still ends with the answer plugged back, a second route, and a blind re-solve (yours, by a different method).
 
 **Never read an `evals/` folder during a run.** It holds test cases for this skill's authors.
 
@@ -143,7 +144,7 @@ A bad first idea costs a page; a bad plan costs the whole solve.
 
 ## Phase 5: Three rounds of checks (never skip)
 
-Write the results to `CHECKS.md` beside the solution (template in `references/checks.md`) and the issue list to `issues.md`. Keep QC output (`qc/`) outside the delivery folder.
+Write the results to `CHECKS.md` beside the solution (template in `references/checks.md`) and the issue list to `issues.md`. Put scratch QC output in `qc/` inside the output folder; it is working material, not part of the deliverable.
 
 ### Round 1: Technical (scripts decide)
 
@@ -152,33 +153,33 @@ Test the claims, not only the formatting. The scripts refute false statements; a
 ```bash
 python3 <this skill>/scripts/verify_identity.py eq "<lhs>" "<rhs>" --vars x:-5:5            # identities
 python3 <this skill>/scripts/verify_identity.py ineq "<a> >= <b>" --vars x:0:10            # inequalities, shows the tight point
-python3 <this skill>/scripts/verify_identity.py deriv "<f>" "<claimed f'>" --var x --range 0.1:3
+python3 <this skill>/scripts/verify_identity.py deriv "<f>" "<claimed f'>" --var x --range 0.1:3 [--others y:0.5:3]   # partials: other variables range too
 python3 <this skill>/scripts/verify_identity.py integral "<f>" x 0 inf "<claimed value>"   # finite or improper
-python3 <this skill>/scripts/verify_identity.py sum "<term>" k 1 n "<closed form>" --nrange 1:60   # exact rational check
+python3 <this skill>/scripts/verify_identity.py sum "<term>" k 1 n "<closed form>" --nrange 1:60   # exact rational check; add --float for sin, exp, log terms
 python3 <this skill>/scripts/verify_identity.py limit "<f>" x 0 "<claimed>"
 python3 <this skill>/scripts/counterexample.py "<integer statement>" --vars n:1:100000     # hunt for counterexamples
 python3 <this skill>/scripts/proof_lint.py solution.md --no-dashes                          # gaps, hand-waving, induction, delimiters
 bash   <this skill>/scripts/compile_check.sh solution.tex                                   # LaTeX build, when a .tex exists
 ```
 
-Also, whenever possible: plug the final answer back into the original problem; test the general formula at n = 1, 2, 3; check units, sizes and signs; for a Lean proof, run the build and confirm there is no `sorry`. Anything that fails is fixed before Round 2. If SymPy is installed, use it for symbolic simplification as a further independent check.
+Also, whenever possible: plug the final answer back into the original problem; test the general formula at n = 1, 2, 3; check units, sizes and signs; for a Lean proof, run the build and confirm there is no `sorry`. **A check must be able to fail.** Before trusting a pass, ask what output would have meant "wrong". A constant integrand makes any quadrature agree, and a test inside the claimed range cannot see a claim that breaks outside it. Design a discriminating test: a contrast case where the answer should differ (a circle that excludes the singularity, n just past the claimed range), a varied parameter, a perturbed claim that the script should reject. Every script prints usage with `-h`. Anything that fails is fixed before Round 2. If SymPy is installed, use it for symbolic simplification as a further independent check.
 
 ### Round 2: The referee's read (line by line, every step)
 
 Act as a referee who has seen every classic mistake and is looking for a reason to reject, but who is fair and quotes the exact line. Full protocol, the ten-point step test, and the severity scale are in `references/checks.md`.
 
-1. `python3 <this skill>/scripts/step_review.py solution.md --out qc/review/` numbers every step (S001, S002 ...) and writes `qc/review/issues.md` with a Coverage checklist.
-2. Read **every step, in order**, and run the ten-point test (hypotheses used and satisfied; quantifier order; case coverage; division by zero and domain; inequality direction under multiplication and squaring; extraneous roots; interchange of limit, sum and integral justified; existence versus uniqueness; induction base and step; circularity; theorem hypotheses). A step with no issue is ticked too, because an unread step is a hole.
+1. `python3 <this skill>/scripts/step_review.py solution.md --out qc/review/` numbers every step (S001, S002 ...) and writes `qc/review/issues.md` with a Coverage checklist. A step is a paragraph, a list item, a bold `**Step N.**` or `**Case N.**` block (even mid-paragraph), a lemma or claim block, or up to 10 rows of a table. The IDs are the tool's, so cite them as "S007 (your Step 3)".
+2. Read **every step, in order**, and run the ten-point test (hypotheses used and satisfied; quantifier order; case coverage; division by zero and domain; inequality direction under multiplication and squaring; extraneous roots; interchange of limit, sum and integral justified; existence versus uniqueness; induction base and step; circularity; theorem hypotheses). A step with no issue is ticked too, because an unread step is a hole. Tick what you have actually read with `step_review.py solution.md --out qc/review/ --tick S001-S004 --note "what you checked"`; the gate rejects ticks without a note. Do not bulk-tick steps you have not read.
 3. Log each finding as one block in `issues.md` (ID, severity `FATAL`, `MAJOR`, `MINOR` or `NIT`, status, location, quote, problem, fix).
 4. **Fix in severity order.** Edit the solution, set the status to `fixed`. If the fix needs something you do not have, the status is `blocked` and the confidence label drops accordingly.
-5. Re-run Round 1 and re-read changed steps (`step_review.py` again un-ticks only the steps whose text changed). Gate: `python3 <this skill>/scripts/issue_register.py qc/review/issues.md --gate` fails while a FATAL or MAJOR is open or a step is unread.
+5. Loop: edit the solution, re-run Round 1, re-run `step_review.py` (it un-ticks only the steps whose text changed), re-read those, tick them with a note. Gate: `python3 <this skill>/scripts/issue_register.py qc/review/issues.md --gate` fails while a FATAL or MAJOR is open or a step is unread.
 
 ### Round 3: Independent minds
 
 The solver who wrote the argument cannot see its own blind spots. Use two independent agents when the Agent tool is available (also when you are a subagent yourself); each is given only what is listed.
 
 - **Blind re-solve.** Give a fresh agent **only the problem statement** (from `problems.md`) and ask for its answer and a short derivation, with no hint of yours. Compare. **Answers must match.** If they differ, find out which is wrong before anything else, because a mismatch is the strongest error signal this skill has. Record both in `CHECKS.md`.
-- **Adversarial verifier.** Give another fresh agent the problem, your solution and the rubric in `references/checks.md`, and tell it to find the first step that fails, using the specific failure patterns, before it scores. Score correctness, completeness and rigor, clarity, answer format, and verification evidence from 1 to 5. Anything under 4 is fixed.
+- **Adversarial verifier.** Give another fresh agent the problem, your solution, the claim statements from the Claim Ledger **without their status column** (statuses would anchor it), and the rubric in `references/checks.md`, and tell it to find the first step that fails, using the specific failure patterns, before it scores. Score correctness, completeness and rigor, clarity, answer format, and verification evidence from 1 to 5. Anything under 4 is fixed.
 - For a write-up or paper, add a panel pass with `paper-review` or `academic-paper-reviewer`.
 - **Light job:** re-solve it yourself by a different method (not by re-reading your solution) and grade in writing in one line each.
 - If you truly cannot start another agent, run the passes yourself in a clearly separate role after re-reading cold, and say in the report that this is weaker.
@@ -198,18 +199,18 @@ FAIL lines get fixed, then Rounds 1 and 2 run again on the changes. Stop when ev
 
 ## Phase 7: Deliver
 
-One output folder (`math/<problem-name>/`):
+One output folder (the one the user or caller named, otherwise `math/<problem-name>/`):
 - `solution.md` (and `solution.tex` / `solution.pdf` when asked or for a write-up; the PDF only if it truly compiled), or the Lean project, or the code with its results table
 - `ledger.md` (with PASS marks), `claims.md`, `CHECKS.md`, `issues.md`, `problems.md`
 - `work/` with the explore notes and the scripts' outputs, small enough to keep
 
 PACKET mode adds `PACKET.md`: a table of problem, area, mode, confidence label, method, second route, and blockers; solve independent problems in parallel with subagents when available, then run one consolidation pass for uniform notation and a cross-check of results that depend on each other.
 
-Delete caches and temporary builds this run created. Offer slides or a poster through `/everythingslideshow` and a paper through `/everythingpaper`.
+Remove only scratch files this run created, by name (no recursive wildcard deletes); leave anything you are unsure about. Offer slides or a poster through `/everythingslideshow` and a paper through `/everythingpaper`.
 
 ## Phase 8: Report
 
-Finish in plain words, under about 15 lines for one problem and one line per problem for a PACKET (open gaps and things that need the user are never cut for length): the **answer or result first** with its confidence label; where the files are; the mode, core and skills used; the second route that confirmed it; what the three rounds found and fixed ("14 steps read, 1 MAJOR found and fixed; blind re-solve agreed"); the ledger result; claims still unproved or numeric-only; assumptions and interpretations; and anything that needs the user (an ambiguity, a policy question, a gap). If teach mode was used, say so and what was withheld.
+If the request contains a belief or a question with an expected answer ("I think X, right?", "prove that ..." about a false statement), open with the verdict (yes, no, partly, false) and the value. Finish in plain words, under about 15 lines for one problem and one line per problem for a PACKET (open gaps and things that need the user are never cut for length): the **answer or result first** with its confidence label; where the files are; the mode, core and skills used; the second route that confirmed it; what the three rounds found and fixed ("14 steps read, 1 MAJOR found and fixed; blind re-solve agreed"); the ledger result; claims still unproved or numeric-only; assumptions and interpretations; and anything that needs the user (an ambiguity, a policy question, a gap). If teach mode was used, say so and what was withheld.
 
 ## Reference files (read when needed)
 

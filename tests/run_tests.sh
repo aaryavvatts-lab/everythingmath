@@ -59,11 +59,46 @@ t "good proof passes the lint"      0 python3 "$S/proof_lint.py" "$tmp/good.md"
 
 python3 "$S/step_review.py" "$tmp/good.md" --out "$tmp/qc" >/dev/null
 t "unread steps block the gate"     1 python3 "$S/issue_register.py" "$tmp/qc/issues.md" --gate
-sed -i.bak 's/- \[ \]/- [x]/' "$tmp/qc/issues.md"
+cp "$tmp/qc/issues.md" "$tmp/qc/fresh.md"
+perl -pi -e 's/- \[ \]/- [x]/' "$tmp/qc/issues.md"
+t "bulk tick without notes is refused" 1 python3 "$S/issue_register.py" "$tmp/qc/issues.md" --gate
+cp "$tmp/qc/fresh.md" "$tmp/qc/issues.md"
+t "tick needs a note"               2 python3 "$S/step_review.py" "$tmp/good.md" --out "$tmp/qc" --tick all
+t "tick with a note works"          0 python3 "$S/step_review.py" "$tmp/good.md" --out "$tmp/qc" --tick all --note "every step read against the ten-point test"
 t "all steps read passes the gate"  0 python3 "$S/issue_register.py" "$tmp/qc/issues.md" --gate
 printf '\n## M001 | MAJOR | open\nLocation: S002\nProblem: gap\n' >>"$tmp/qc/issues.md"
-sed -i.bak 's/^## Coverage/## Coverage/' "$tmp/qc/issues.md"
 t "open MAJOR blocks the gate"      1 python3 "$S/issue_register.py" "$tmp/qc/issues.md" --gate
+printf 'Intro.\n\n**Step 1.** a is b. **Step 2.** b is c.\n**Step 3.** so a is c.\n\n| x | y |\n|--|--|\n| 1 | 2 |\n| 3 | 4 |\n' >"$tmp/steps.md"
+python3 "$S/step_review.py" "$tmp/steps.md" --out "$tmp/qs" >"$tmp/qs.out"
+n=$(grep -c '^- \[ \] S' "$tmp/qs/issues.md")
+t "bold Step labels and a table split into 5 steps" 0 test "$n" -eq 5
+printf 'Step one.\n\n**Step 1.** edit me.\n' >"$tmp/e.md"
+python3 "$S/step_review.py" "$tmp/e.md" --out "$tmp/qe" >/dev/null
+python3 "$S/step_review.py" "$tmp/e.md" --out "$tmp/qe" --tick all --note "read both steps closely" >/dev/null
+printf 'Step one.\n\n**Step 1.** edited text now.\n' >"$tmp/e.md"
+python3 "$S/step_review.py" "$tmp/e.md" --out "$tmp/qe" >/dev/null
+t "edited step is un-ticked"        1 python3 "$S/issue_register.py" "$tmp/qe/issues.md" --gate
+
+t "help works"                      0 python3 "$S/verify_identity.py" -h
+t "ledger_check help works"         0 python3 "$S/ledger_check.py" --help
+t "curl-style partial derivative"   0 v deriv "x/(x**2+y**2)" "(y**2-x**2)/(x**2+y**2)**2" --var x --range 0.5:3 --others y:0.5:3
+t "wrong partial derivative caught" 1 v deriv "x/(x**2+y**2)" "(x**2-y**2)/(x**2+y**2)**2" --var x --range 0.5:3 --others y:0.5:3
+t "trig sum in float mode"          0 v sum "sin(k)" k 1 n "(cos(1/2)-cos(n+1/2))/(2*sin(1/2))" --float --nrange 1:80
+t "wrong trig sum caught"           1 v sum "sin(k)" k 1 n "(cos(1/2)-cos(n))/(2*sin(1/2))" --float --nrange 1:80
+t "trig sum needs --float"          2 v sum "sin(k)" k 1 n "n" --nrange 1:5
+cat >"$tmp/skel.md" <<'EOF'
+# Problem 1
+Evaluate the integral.
+
+## Answer
+The integral equals 2 pi.
+
+## Solution
+**Step 1.** Parametrize the circle. **Step 2.** Substitute and simplify to get the constant integrand 1.
+This completes the computation.
+EOF
+t "recommended skeleton lints clean" 0 python3 "$S/proof_lint.py" "$tmp/skel.md"
+t "constant check is warned about"  0 bash -c "python3 '$S/verify_identity.py' eq '40**2+40+41' '41**2' --vars x:0:1 | grep -q 'tests a constant'"
 
 printf '| ID | Status | Requirement |\n|--|--|--|\n| R1 | PASS | answer is 5 |\n| R2 | OPEN | cites source |\n' >"$tmp/l.md"
 t "open ledger line is not done"    1 python3 "$S/ledger_check.py" "$tmp/l.md"

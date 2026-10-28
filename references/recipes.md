@@ -15,7 +15,7 @@ Contents: SOLVE · PROVE · COMPUTE · CHECK · FIX · WRITE · FORMALIZE · EXP
 
 ## PROVE (a statement is given)
 
-1. Restate with quantifiers and hypotheses. Test the statement for small cases and edge cases first (`counterexample.py`). If it is false, the deliverable is the counterexample, verified by script.
+1. Restate with quantifiers and hypotheses. Test the statement for small cases and edge cases first (`counterexample.py`). If it is false, the deliverable is the counterexample, verified by script and by hand, plus the nearest true statement with its proof; the label is `REFUTED` and the ledger's Asked lines are rewritten to "establish whether it holds". A refutation that fits in 15 lines is a Light job.
 2. Choose the proof shape (direct, contradiction, induction, extremal, double counting, construction, invariant, probabilistic). `references/methods.md`.
 3. Core: `math-proof-solo` (or `math-proof-siege` for hard cases), `math-rigor` for step-by-step with SymPy checks, `math-olympiad` for competition style.
 4. Keep the Claim Ledger current; prove lemmas separately and check each by Round 1.

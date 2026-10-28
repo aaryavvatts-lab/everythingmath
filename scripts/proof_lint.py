@@ -23,7 +23,11 @@ HANDWAVE = [
     (r"\bwithout loss of generality\b|\bWLOG\b", "WLOG (justify it)"), (r"\bit can be shown\b", "it can be shown"),
 ]
 MARKERS = re.compile(r"\[(GAP|TODO|UNPROVEN|CHECK|FIXME)[^\]]*\]|\?\?\?|\bTODO\b", re.I)
-END = re.compile(r"(final answer|answer\s*[:=]|\\boxed|\bhence\b.*\bproved\b|\bQED\b|∎|\\qed|\\blacksquare|therefore[, ].*(=|is|are))", re.I)
+END = re.compile(
+    r"(final answer|answer\s*[:=]|^\s*#+\s*(final\s+)?answer|\\boxed|\bhence\b.*\bproved\b|\bQED\b|∎|\\qed|\\blacksquare"
+    r"|therefore[, ].*(=|is|are)|completes? the (proof|solution|computation|calculation|argument)"
+    r"|as (claimed|required|desired)|which (proves|establishes|shows)|the (answer|integral|limit|sum|value) is)",
+    re.I | re.M)
 AI = re.compile(r"\b(delve|tapestry|it is important to note|in conclusion|let's dive)\b", re.I)
 
 
@@ -77,21 +81,26 @@ def main():
     if depth != 0 and a.file.endswith(".tex"):
         fails.append((0, "unbalanced braces"))
 
+    def where(pattern):
+        m = re.search(pattern, text, re.I)
+        return text[:m.start()].count("\n") + 1 if m else 0
+
     cases = [int(x) for x in re.findall(r"\bCase\s+(\d+)", text, re.I)]
     if cases and 1 in cases and max(cases) < 2:
-        warns.append((0, "'Case 1' appears with no 'Case 2': is the split complete?"))
+        warns.append((where(r"\bCase\s+1"), "'Case 1' appears with no 'Case 2': is the split complete?"))
     if cases and not re.search(r"\b(exhaust|all cases|these cases cover|in every case|covers all|complete)", text, re.I):
-        warns.append((0, "case split found but no sentence says the cases are exhaustive"))
+        warns.append((where(r"\bCase\s+\d+"), "case split found but no sentence says the cases are exhaustive"))
     if re.search(r"\binduction\b", text, re.I):
         if not re.search(r"base case|basis|\bn\s*=\s*(0|1)\b|P\(\s*(0|1)\s*\)", text, re.I):
-            fails.append((0, "induction used but no base case is visible"))
+            fails.append((where(r"\binduction\b"), "induction used but no base case is visible"))
         if not re.search(r"inductive (step|hypothesis)|induction (step|hypothesis)|assume .* for (some|all)|suppose .* holds for", text, re.I):
-            warns.append((0, "induction used but no inductive step or hypothesis is stated"))
+            warns.append((where(r"\binduction\b"), "induction used but no inductive step or hypothesis is stated"))
     if re.search(r"\bcontradiction\b", text, re.I) and not re.search(r"\b(assume|suppose)\b", text, re.I):
-        warns.append((0, "'contradiction' appears but no assumption is introduced"))
-    if re.search(r"\b(if and only if|iff)\b|\\iff|\\Leftrightarrow", text, re.I):
+        warns.append((where(r"\bcontradiction\b"), "'contradiction' appears but no assumption is introduced"))
+    iffpat = r"\b(if and only if|iff)\b|\\iff|\\Leftrightarrow"
+    if re.search(iffpat, text, re.I):
         if not re.search(r"(\u21d2|\\Rightarrow|\\implies|converse|conversely|\(\s*\u21d0|\bonly if\b|\(\s*\\Leftarrow)", text, re.I):
-            warns.append((0, "'iff' claimed but both directions are not visibly proved (look for the converse)"))
+            warns.append((where(iffpat), "'iff' claimed but both directions are not visibly proved (look for the converse)"))
     if not a.no_answer_needed and not END.search(text):
         warns.append((0, "no final answer, conclusion or QED line found"))
     if len(re.findall(r"\w+", text)) < 15:

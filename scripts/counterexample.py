@@ -49,8 +49,9 @@ def main():
         signal.signal(signal.SIGALRM, lambda *_: (print("TIMEOUT before finishing the range"), sys.exit(2)))
         signal.alarm(a.timeout)
     names = list(ranges)
-    hits, errors, checked = [], 0, 0
+    hits, errors, checked, last = [], 0, 0, None
     for combo in itertools.product(*ranges.values()):
+        last = combo
         env = dict(zip(names, combo))
         try:
             ok = bool(f(env))
@@ -68,7 +69,12 @@ def main():
               "bad domain). Fix the statement or the ranges." % errors)
         return 2
     if hits:
-        print("FOUND %s (%d shown, %d points checked):" % (label, len(hits), checked))
+        stopped = len(hits) >= a.max
+        print("FOUND %s (%d shown; %s):" % (
+            label, len(hits),
+            "search stopped at --max after reaching %s, so there may be more" % ", ".join(
+                "%s=%d" % (k, v) for k, v in zip(names, last)) if stopped
+            else "the whole range was searched, these are all of them"))
         for h in hits:
             print("  " + ", ".join("%s=%d" % (k, v) for k, v in zip(names, h)))
         return 1

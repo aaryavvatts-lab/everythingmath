@@ -193,6 +193,12 @@ def parse(src, names, mode="float"):
     return run
 
 
+def used_names(src):
+    """Names that appear in an expression (variables, constants and function names)."""
+    tree = ast.parse(src.strip().replace("^", "**"), mode="eval")
+    return {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+
+
 def parse_vars(spec):
     """'x:-5:5,y:0:3' -> {'x': (-5.0, 5.0), 'y': (0.0, 3.0)}"""
     out = {}

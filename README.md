@@ -24,7 +24,7 @@ Most "solve my math problem" prompts produce a fluent answer that nobody checked
 - **The referee reads every step.** `step_review.py` numbers each step; each is read against a ten-point test (theorem hypotheses, quantifier order, division by zero, case coverage, induction base, interchange of limits, and so on). A gate refuses to pass while a step is unread or a serious issue is open.
 - **An adversarial verifier.** Another fresh agent hunts for the first failing step using a catalog of classic mistakes.
 - **A closing gate.** Every thing you asked for is a numbered ledger line that must be marked PASS with evidence.
-- **Honest labels.** `SOLVED`, `SOLVED-WITH-CAVEAT`, `PARTIAL`, `NO-CONFIDENT-SOLUTION`. It will not bluff, and it will say a problem statement is false when it is.
+- **Honest labels.** `SOLVED`, `REFUTED`, `SOLVED-WITH-CAVEAT`, `PARTIAL`, `NO-CONFIDENT-SOLUTION`. It will not bluff, and it will say a problem statement is false when it is.
 - **Integrity-aware.** If the material looks like a graded or application problem set, it asks whether outside help is allowed and otherwise switches to teach mode: hints, key ideas and checking your own attempt, instead of handing over a finished submission.
 
 ## The process

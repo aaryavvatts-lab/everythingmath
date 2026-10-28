@@ -40,7 +40,7 @@ Use this skeleton in `solution.md` (adapt names to the problem):
 <generalizations, why the hypotheses are needed, what fails without them>
 ```
 
-Put the answer first: the reader should know the destination before the route. For a pure proof, state the theorem in the "Answer" slot and end with the closing line ("which completes the proof").
+Put the answer first: the reader should know the destination before the route. When the request holds a belief ("I think I can just use Green's theorem, right?"), the first line is the verdict ("No: the integral is 2 pi, and Green does not apply because ..."). For a pure proof, state the theorem in the "Answer" slot and end with the closing line ("which completes the proof").
 
 ## Writing rules
 
@@ -86,6 +86,7 @@ State one in the report and at the top of the solution if it is not `SOLVED`.
 
 - `SOLVED`: a complete argument; every claim `proved` or `cited-checked`; Round 1 to 3 passed; the blind re-solve agrees.
 - `SOLVED-WITH-CAVEAT`: complete except one named step that is numerically supported but not proved (or a cited result you could not fully verify). The caveat is printed next to the answer.
+- `REFUTED`: the statement as given is false. The counterexample is verified by script and by hand, and the nearest true statement is stated and proved. Say "false" first.
 - `PARTIAL`: some parts proved, some gaps stated. List exactly which.
 - `NO-CONFIDENT-SOLUTION`: no argument that survives checking. Report what was tried, what is known, and the most promising direction.
 

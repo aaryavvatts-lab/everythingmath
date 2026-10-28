@@ -62,7 +62,7 @@ Fixes after scoring: ...
 ## Closing gate
 Ledger: R1 PASS ... (ledger_check: DONE)
 Claims: all proved or cited-checked / open: ...
-Confidence label: SOLVED | SOLVED-WITH-CAVEAT | PARTIAL | NO-CONFIDENT-SOLUTION
+Confidence label: SOLVED | REFUTED | SOLVED-WITH-CAVEAT | PARTIAL | NO-CONFIDENT-SOLUTION
 ```
 
 ## Round 1 checklist
@@ -146,7 +146,7 @@ Compare the final answers. **They must agree** (up to equivalent form). If they 
 
 > You are a hostile but fair referee. Below are a problem and a proposed solution. Your job is to find the first step that fails. Before scoring, search the solution for each of these failure patterns: <paste "Failure patterns" above>. For every step, ask whether its hypotheses hold and recompute any calculation. Report: (1) the first failing step with a quoted line and exactly why it fails, or "no failing step found after checking every step"; (2) every gap you would reject a paper for; (3) scores 1 to 5 for correctness, completeness and rigor, clarity, answer form, and verification evidence; (4) the single weakest step. Do not praise; do not rewrite the solution.
 
-Hand the verifier: the problem, `solution.md`, and the Claim Ledger. Do not hand it the Round 1 or 2 results (they would anchor it).
+Hand the verifier: the problem, `solution.md`, and the claim statements from the Claim Ledger without their status column. Do not hand it the Round 1 or 2 results or the statuses (they would anchor it).
 
 ### Rubric
 
